@@ -1,0 +1,31 @@
+[package]
+name = "zenit-day"
+version = "0.1.5"
+description = "Acompanhamento pessoal de assuntos"
+authors = ["Zenit"]
+edition = "2021"
+
+[lib]
+name = "zenit_day_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite = { version = "0.38", features = ["bundled"] }
+
+[target.'cfg(windows)'.dependencies]
+tauri-plugin-dialog = "2"
+windows-sys = { version = "0.61", features = ["Win32_Security_Cryptography", "Win32_Foundation"] }
+
+[profile.dev]
+debug = 0
+incremental = false
+
+[profile.test]
+debug = 0
+incremental = false

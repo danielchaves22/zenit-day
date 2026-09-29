@@ -1,0 +1,41 @@
+{
+  "name": "zenit-day",
+  "version": "0.1.5",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.14.0"
+  },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "tauri": "tauri",
+    "test:app": "vitest run",
+    "test:e2e": "playwright test",
+    "test": "node --test tests/*.test.mjs",
+    "test:database": "node scripts/test-supabase-database.mjs",
+    "test:database:embedded": "node scripts/test-supabase-embedded.mjs",
+    "supabase:config": "node scripts/check-supabase.mjs --config-only",
+    "supabase:check": "powershell.exe -NoProfile -File scripts/check-supabase.ps1"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.11.1",
+    "lucide-react": "^0.577.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@playwright/test": "^1.63.0",
+    "@tauri-apps/cli": "^2.11.4",
+    "@types/node": "^22.19.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.1.1",
+    "prettier": "^3.9.9",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.1"
+  }
+}
