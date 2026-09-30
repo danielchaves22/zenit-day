@@ -40,6 +40,10 @@ O teste `tests/hub-readonly.integration.sql` passou também no PostgreSQL hosped
 
 Os advisors não apresentaram novos avisos após a migração. Permanecem os avisos anteriores sobre a tabela privada de recibos sem políticas (acesso direto bloqueado), a RPC de sincronização `SECURITY DEFINER` (escrita intencional, com validação da conta e agora bloqueio OAuth por trigger) e a proteção de senhas vazadas desativada. Referências: [recibos privados](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy), [RPC autenticada](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable), [proteção de senhas](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection).
 
-A publicação web, o cadastro OAuth e a conexão real pelo WhatsApp ainda estão pendentes nesta etapa. A aplicação da migração, sozinha, não habilita o conector.
+A página de autorização está publicada em `https://zenit-day.onrender.com/oauth/consent`, no Static Site `zenit-day` do Render (`srv-dauke459fdbs739acepg`). O build usa `npm ci --include=dev && npm run build`, saída `dist`, Node 22 e as quatro variáveis públicas descritas acima. O site tem auto-deploy desabilitado, rewrite de `/oauth/consent` para `/index.html` e `Referrer-Policy: no-referrer` em `/*`. A rota respondeu HTTP 200 com o cabeçalho esperado.
+
+O OAuth Server foi habilitado com Site URL `https://zenit-day.onrender.com`, Authorization Path `/oauth/consent` e registro dinâmico desabilitado. O cliente `Zenit Hub` é confidencial, usa `client_secret_basic` e aceita somente `https://zenit-hub.onrender.com/oauth/day/callback`. O segredo foi configurado no backend Hub; somente o identificador público vai para o frontend do Day.
+
+Uma solicitação OAuth de teste, sem login nem autorização de usuário, redirecionou corretamente para o formulário publicado. A conexão pessoal e a consulta via WhatsApp ainda aguardam o teste do usuário.
 
 Referências: [OAuth Server](https://supabase.com/docs/guides/auth/oauth-server/getting-started), [Token security](https://supabase.com/docs/guides/auth/oauth-server/token-security).
