@@ -1,3 +1,4 @@
+-- Version aligned with the migration applied to the hosted Day project.
 begin;
 
 -- OAuth clients are read-only in this release. Enforce at the table boundary,

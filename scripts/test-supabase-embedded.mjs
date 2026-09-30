@@ -43,7 +43,7 @@ try {
   );
   for (const result of groupResults)
     for (const row of result.rows ?? []) if (row.result) console.log(row);
-  const hubMigration = await read("../supabase/migrations/20260929162635_hub_oauth_read_only.sql");
+  const hubMigration = await read("../supabase/migrations/20260930171741_hub_oauth_read_only.sql");
   await db.exec(hubMigration);
   await db.exec(hubMigration);
   const hubResults = await db.exec(await read("../tests/hub-readonly.integration.sql"));

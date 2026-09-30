@@ -4,7 +4,7 @@ O Hub consulta assuntos via Data API usando OAuth e RLS do usuário. Cada aplica
 
 ## Preparação
 
-1. Aplique `supabase/migrations/20260929162635_hub_oauth_read_only.sql` após as migrações existentes. A migração acrescenta uma verificação de capacidade e bloqueia escritas com tokens OAuth de terceiros nas tabelas de assuntos/histórico, inclusive através da função de sincronização existente. Sessões normais dos aplicativos continuam podendo gravar. Esta versão trata **todos os clientes OAuth como somente leitura**.
+1. Aplique `supabase/migrations/20260930171741_hub_oauth_read_only.sql` após as migrações existentes. A migração acrescenta uma verificação de capacidade e bloqueia escritas com tokens OAuth de terceiros nas tabelas de assuntos/histórico, inclusive através da função de sincronização existente. Sessões normais dos aplicativos continuam podendo gravar. Esta versão trata **todos os clientes OAuth como somente leitura**.
 2. Habilite OAuth Server no projeto Supabase e mantenha registro dinâmico desabilitado para este piloto.
 3. Registre um cliente confidencial chamado Zenit Hub, com `client_secret_basic`, authorization code/refresh token e callback exato `https://SEU_HUB/oauth/day/callback`.
 4. Publique a aplicação web do Day em HTTPS com fallback de SPA para `/oauth/consent`. Configure a Site URL do Auth para essa origem e Authorization Path como `/oauth/consent`. Não confunda essa URL com os callbacks de outros provedores de login.
@@ -31,5 +31,15 @@ npx playwright test tests/e2e/hub-consent.spec.ts
 SQL é validado em PGlite com Auth simulado, incluindo leitura do proprietário, isolamento de outra conta e bloqueio de escrita OAuth. O teste de navegador simula o provedor. A ativação OAuth, publicação da página, migração hospedada e teste com conta real são etapas operacionais separadas.
 
 O comando `supabase db advisors --local --type security` requer o stack Supabase local ativo. A validação PGlite não substitui os advisors no ambiente em que a migração for aplicada.
+
+## Ativação em 30/09/2026
+
+A migração de proteção foi aplicada ao projeto hospedado `zenit-day` (`zwtbbitzsfapsjfjabqi`) como `20260930171741_hub_oauth_read_only`. O arquivo local foi renomeado para corresponder ao histórico remoto; o conteúdo funcional permanece o mesmo da preparação anterior (`20260929162635`). Não aplique novamente a versão antiga.
+
+O teste `tests/hub-readonly.integration.sql` passou também no PostgreSQL hospedado, em transação com rollback: leitura da própria conta, isolamento entre contas, rejeição de escrita OAuth e preservação da escrita normal. Nenhuma tarefa real foi alterada. Typecheck, teste de redirecionamento, testes SQL embarcados e os dois testes Playwright da página de consentimento passaram.
+
+Os advisors não apresentaram novos avisos após a migração. Permanecem os avisos anteriores sobre a tabela privada de recibos sem políticas (acesso direto bloqueado), a RPC de sincronização `SECURITY DEFINER` (escrita intencional, com validação da conta e agora bloqueio OAuth por trigger) e a proteção de senhas vazadas desativada. Referências: [recibos privados](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy), [RPC autenticada](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable), [proteção de senhas](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection).
+
+A publicação web, o cadastro OAuth e a conexão real pelo WhatsApp ainda estão pendentes nesta etapa. A aplicação da migração, sozinha, não habilita o conector.
 
 Referências: [OAuth Server](https://supabase.com/docs/guides/auth/oauth-server/getting-started), [Token security](https://supabase.com/docs/guides/auth/oauth-server/token-security).
