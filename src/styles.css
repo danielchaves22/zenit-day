@@ -290,7 +290,8 @@ p {
   align-items: start;
 }
 .quick-capture {
-  display: flex;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
   padding: 9px 9px 9px 15px;
@@ -301,6 +302,8 @@ p {
   box-shadow: 0 2px 6px #2b436605;
 }
 .quick-capture input {
+  min-width: 0;
+  width: 100%;
   flex: 1;
   border: 0;
   padding: 7px 0;
@@ -308,6 +311,8 @@ p {
   font-size: 13px;
 }
 .quick-capture button {
+  grid-column: 3;
+  grid-row: 1;
   height: 32px;
   width: 32px;
   background: var(--soft);
@@ -316,6 +321,64 @@ p {
   place-items: center;
   color: var(--blue);
   border-radius: 8px;
+}
+.quick-capture .priority-picker {
+  grid-column: 2 / -1;
+  grid-row: 2;
+}
+.priority-picker {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.priority-picker select {
+  width: auto;
+  min-width: 130px;
+  max-width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--soft);
+  color: var(--ink);
+  padding: 7px 10px;
+  font: inherit;
+}
+.priority-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #536a86;
+  background: #edf2f8;
+}
+.priority-badge.important {
+  color: #8a590b;
+  background: #fff4d7;
+}
+.priority-badge.urgent {
+  color: #ac3341;
+  background: #ffebee;
+}
+.priority-badge.low {
+  color: #576882;
+  background: #eef1f6;
+}
+.subject-open > .priority-badge {
+  margin-top: 8px;
+}
+.detail-priority {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 16px;
 }
 .list-tools {
   display: flex;
@@ -432,6 +495,89 @@ p {
 }
 .group-fields label {
   min-width: 0;
+}
+.windows-settings label {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 16px 0;
+  cursor: pointer;
+}
+.windows-settings input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  margin: 2px 0 0;
+  accent-color: var(--blue);
+}
+.windows-settings label small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  margin-top: 4px;
+}
+.quick-capture-window {
+  padding: 22px;
+  background: #fff;
+  min-height: 100vh;
+}
+.capture-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--blue);
+  margin-bottom: 20px;
+}
+.capture-brand span {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--muted);
+}
+.quick-capture-window form {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.quick-capture-window label {
+  font-size: 12px;
+}
+.quick-capture-window input {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid #d4e2f7;
+  border-radius: 9px;
+  background: #fbfdff;
+  color: var(--ink);
+  font: inherit;
+}
+.capture-hint,
+.capture-shortcuts {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 0;
+}
+.capture-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+}
+.capture-actions > span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 10px;
+  color: var(--muted);
+}
+.capture-actions .button {
+  padding: 9px 12px;
+  white-space: nowrap;
+}
+.capture-shortcuts {
+  text-align: right;
 }
 .subject-card {
   display: block;

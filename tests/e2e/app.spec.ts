@@ -50,6 +50,7 @@ function mockService() {
             daily_goals: true,
             checklist: true,
             groups: true,
+            priorities: true,
           };
         else if (url.pathname.endsWith("/zenit_day_save_subject")) {
           const key = user + "|" + data.p_subject_id;
@@ -113,6 +114,144 @@ async function login(page: Page, email = "alice@example.test") {
     page.getByRole("heading", { name: "Hoje", exact: true }),
   ).toBeVisible();
 }
+
+test("priority: quick entry, editing, mobile sync, offline conflict and stable ordering", async ({
+  browser,
+}) => {
+  const backend = mockService();
+  const desktop = await browser.newContext({
+    viewport: { width: 1280, height: 900 },
+  });
+  const phone = await browser.newContext({
+    viewport: { width: 360, height: 800 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  const dnet = { online: true },
+    mnet = { online: true };
+  await backend.attach(desktop, dnet);
+  await backend.attach(phone, mnet);
+  const page = await desktop.newPage(),
+    mobile = await phone.newPage();
+  await login(page);
+  const quick = page.locator(".quick-capture");
+  await expect(quick.getByRole("combobox", { name: "Prioridade" })).toHaveValue(
+    "normal",
+  );
+  await quick
+    .getByRole("combobox", { name: "Prioridade" })
+    .selectOption("urgent");
+  await quick.getByRole("textbox").fill("Retorno urgente");
+  await quick.getByRole("button", { name: "Adicionar", exact: true }).click();
+  await expect.poll(() => backend.writes).toBe(1);
+  await expect(quick.getByRole("combobox", { name: "Prioridade" })).toHaveValue(
+    "normal",
+  );
+  await quick.getByRole("combobox", { name: "Prioridade" }).selectOption("low");
+  await quick.getByRole("textbox").fill("Ideia para depois");
+  await quick.getByRole("textbox").press("Enter");
+  await expect.poll(() => backend.writes).toBe(2);
+  await expect(page.locator(".subject-card").first()).toContainText(
+    "Ideia para depois",
+  );
+  const urgent = page
+    .locator(".subject-card")
+    .filter({ hasText: "Retorno urgente" });
+  await expect(urgent.locator(".priority-badge")).toHaveText("Urgente");
+  await urgent.locator(".subject-open").click();
+  await page.getByRole("button", { name: "Editar", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("combobox", { name: "Prioridade", exact: true })
+    .selectOption("important");
+  await page
+    .getByRole("button", { name: "Salvar assunto", exact: true })
+    .click();
+  await expect.poll(() => backend.writes).toBe(3);
+  await expect(urgent.locator(".priority-badge")).toHaveText("Importante");
+  await page.screenshot({
+    path: "test-results/priority-desktop.png",
+    fullPage: true,
+  });
+  await login(mobile);
+  const mobileCard = mobile
+    .locator(".subject-card")
+    .filter({ hasText: "Retorno urgente" });
+  await expect(mobileCard.locator(".priority-badge")).toHaveText("Importante");
+  expect(
+    await mobile.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await expect(
+    mobile
+      .locator(".quick-capture")
+      .getByRole("combobox", { name: "Prioridade" }),
+  ).toBeVisible();
+  await mobile.screenshot({
+    path: "test-results/priority-mobile.png",
+    fullPage: true,
+  });
+  const picker = mobile.locator(".quick-capture .priority-picker");
+  expect(
+    await picker.evaluate((el) => getComputedStyle(el).flexDirection),
+  ).toBe("row");
+  const mobileSelect = await picker.getByRole("combobox").boundingBox();
+  expect(mobileSelect?.height).toBeGreaterThanOrEqual(44);
+  mnet.online = false;
+  await mobileCard.locator(".subject-open").tap();
+  await mobile.getByRole("button", { name: "Editar", exact: true }).tap();
+  await mobile
+    .getByRole("dialog")
+    .getByRole("combobox", { name: "Prioridade", exact: true })
+    .selectOption("urgent");
+  await mobile
+    .getByRole("button", { name: "Salvar assunto", exact: true })
+    .tap();
+  await expect(mobile.locator(".detail-priority")).toContainText("Urgente");
+  await page.getByRole("button", { name: "Editar", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("combobox", { name: "Prioridade", exact: true })
+    .selectOption("low");
+  await page
+    .getByRole("button", { name: "Salvar assunto", exact: true })
+    .click();
+  await expect.poll(() => backend.writes).toBe(4);
+  mnet.online = true;
+  await mobile.getByRole("button", { name: "Sincronizar agora" }).tap();
+  await expect(mobile.locator(".conflict-versions")).toContainText(
+    "Prioridade: Urgente",
+  );
+  await expect(mobile.locator(".conflict-versions")).toContainText(
+    "Prioridade: Baixa",
+  );
+  await mobile.getByRole("button", { name: "Usar minha versão" }).tap();
+  await mobile.getByRole("button", { name: "Sincronizar agora" }).tap();
+  await expect.poll(() => backend.writes).toBe(5);
+  const saved = [...backend.rows.values()].find(
+    (s) => s.title === "Retorno urgente",
+  );
+  expect(saved?.priority).toBe("urgent");
+  await page.getByRole("button", { name: "Novo assunto", exact: true }).click();
+  const form = page.getByRole("dialog");
+  await expect(
+    form.getByRole("combobox", { name: "Prioridade", exact: true }),
+  ).toHaveValue("normal");
+  await form.getByLabel("Assunto", { exact: true }).fill("Assunto normal");
+  await form
+    .getByRole("button", { name: "Salvar assunto", exact: true })
+    .click();
+  await expect.poll(() => backend.writes).toBe(6);
+  await expect(
+    page
+      .locator(".subject-card")
+      .filter({ hasText: "Assunto normal" })
+      .locator(".priority-badge"),
+  ).toHaveCount(0);
+  await desktop.close();
+  await phone.close();
+});
 
 test("groups: long names remain usable on a narrow phone", async ({
   browser,
@@ -545,9 +684,10 @@ test("checklist: newest first, editing, offline sync, mobile layout and conflict
   await expect(page.locator(".subject-card").first()).toContainText(title);
   const card = page.locator(".subject-card").filter({ hasText: title });
   const detail = page.getByRole("region", { name: "Checklist do assunto" });
-  await detail
-    .getByRole("checkbox", { name: "Revisar os pontos pendentes" })
-    .check();
+  await setItem(
+    detail.getByRole("checkbox", { name: "Revisar os pontos pendentes" }),
+    true,
+  );
   await expect.poll(() => backend.writes).toBe(2);
   await setItem(
     detail.getByRole("checkbox", { name: "Enviar pauta" }),

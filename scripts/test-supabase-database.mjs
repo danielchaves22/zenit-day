@@ -139,6 +139,23 @@ try {
       ),
     ).trim(),
   );
+  const priorityMigration = await readFile(
+    new URL(
+      "../supabase/migrations/20260930023730_subject_priorities.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  sql(priorityMigration);
+  sql(priorityMigration);
+  console.log(
+    sql(
+      await readFile(
+        new URL("../tests/priorities.integration.sql", import.meta.url),
+        "utf8",
+      ),
+    ).trim(),
+  );
   const checks = sql(
     await readFile(
       new URL("../supabase/checks/verify-setup.sql", import.meta.url),

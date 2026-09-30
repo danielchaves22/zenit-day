@@ -51,6 +51,8 @@ import {
   enqueue,
   isToday,
   parseBackup,
+  priorities,
+  priorityOf,
   resolveConflict,
   setDailyGoal,
   setChecklistItem,
@@ -60,6 +62,7 @@ import {
   type Backup,
   type CompletionUndo,
   type DailyGoal,
+  type Priority,
   type Status,
   type Subject,
   type SubjectDoc,
@@ -67,6 +70,14 @@ import {
 
 import { GroupFields } from "./GroupFields";
 import { GroupPanel } from "./GroupPanel";
+import { QuickCapture } from "./QuickCapture";
+import { PriorityPicker } from "./PriorityPicker";
+import { WindowsSettings } from "./WindowsSettings";
+import {
+  desktopAvailable,
+  saveCapture,
+  useDesktopIntegration,
+} from "./desktop";
 import {
   groupSubjects,
   groupPath,
@@ -229,6 +240,14 @@ function Login({
   );
 }
 export default function App() {
+  return desktopAvailable &&
+    new URLSearchParams(window.location.search).get("capture") === "1" ? (
+    <QuickCapture />
+  ) : (
+    <MainApp />
+  );
+}
+function MainApp() {
   const [session, setSession] = useState<Session | null>(null),
     [repo, setRepo] = useState<Repository | null>(null),
     [boot, setBoot] = useState(true),
@@ -375,6 +394,7 @@ function Home({
     [query, setQuery] = useState(""),
     [filter, setFilter] = useState("all"),
     [capture, setCapture] = useState(""),
+    [capturePriority, setCapturePriority] = useState<Priority>("normal"),
     [editor, setEditor] = useState<Editor | null>(null),
     [settings, setSettings] = useState(false),
     [logout, setLogout] = useState(false),
@@ -479,6 +499,34 @@ function Home({
     done: subjects.filter((s) => !s.archived && s.status === "done").length,
     archive: subjects.filter((s) => s.archived).length,
   };
+  useDesktopIntegration({
+    namespace: repo.key,
+    email: session.user.email,
+    todayCount: counts.today,
+    status: !online
+      ? "Sem conexão"
+      : syncState === "running"
+        ? "Sincronizando…"
+        : Object.keys(w.conflicts).length
+          ? "Alterações para comparar"
+          : w.queue.length
+            ? `${w.queue.length} alteração(ões) aguardando envio`
+            : syncError
+              ? "Verifique a sincronização"
+              : "Tudo sincronizado",
+    onToday: () => {
+      setView("today");
+      setSelected(null);
+      setQuery("");
+      setFilter("all");
+    },
+    onCapture: async (request) => {
+      await saveCapture(repo, session.user.id, request);
+      revealGroup(blankDoc(), "today");
+      notify("Assunto salvo pela captura rápida.");
+      if (navigator.onLine) void synchronize();
+    },
+  });
   const visible = subjects
     .filter((s) =>
       view === "today"
@@ -726,6 +774,11 @@ function Home({
           <strong>{s.title}</strong>
           <span className={`status ${s.status}`}>{statuses[s.status]}</span>
         </div>
+        {priorityOf(s) !== "normal" && (
+          <span className={`priority-badge ${priorityOf(s)}`}>
+            {priorities[priorityOf(s)]}
+          </span>
+        )}
         {s.next_action && (
           <p className="next-preview">
             <ArrowRight size={13} />
@@ -932,8 +985,9 @@ function Home({
                 if (!capture.trim() || captureBusy.current) return;
                 captureBusy.current = true;
                 try {
-                  await save(blankDoc(capture.trim()), null);
+                  await save(blankDoc(capture.trim(), capturePriority), null);
                   setCapture("");
+                  setCapturePriority("normal");
                 } catch (e) {
                   notify(errorText(e));
                 } finally {
@@ -948,6 +1002,10 @@ function Home({
                 maxLength={200}
                 value={capture}
                 onChange={(e) => setCapture(e.target.value)}
+              />
+              <PriorityPicker
+                value={capturePriority}
+                onChange={setCapturePriority}
               />
               <button
                 type="submit"
@@ -1076,6 +1134,12 @@ function Home({
                   </span>
                 </div>
                 <h2>{subject.title}</h2>
+                <div className="detail-priority">
+                  Prioridade{" "}
+                  <span className={`priority-badge ${priorityOf(subject)}`}>
+                    {priorities[priorityOf(subject)]}
+                  </span>
+                </div>
                 <div className="attributes">
                   <div>
                     <small>Responsável pela execução</small>
@@ -1372,6 +1436,7 @@ function Home({
             Os assuntos desta conta ficam separados dos dados de outros
             usuários.
           </p>
+          <WindowsSettings />
           <div className="settings-section">
             <h3>Cópia dos seus assuntos</h3>
             <p>
@@ -1424,7 +1489,7 @@ function Home({
               <LogOut size={17} />
               Sair da conta
             </Button>
-            <small className="version">Zenit Day · versão 0.1.5</small>
+            <small className="version">Zenit Day · versão 0.1.8</small>
           </div>
         </Modal>
       )}
@@ -1589,6 +1654,11 @@ function EditorDialog({
                 <option value="other">Outra pessoa</option>
               </select>
             </label>
+            <PriorityPicker
+              value={priorityOf(doc)}
+              onChange={(value) => change("priority", value)}
+              disabled={busy}
+            />
             <GroupFields
               doc={doc}
               subjects={subjects}
@@ -1864,6 +1934,8 @@ function ConflictView({
                       : value.responsible_name}
                     <br />
                     Grupo: {groupPath(value) || "Sem grupo"}
+                    <br />
+                    Prioridade: {priorities[priorityOf(value)]}
                     <br />
                     Retomar: {dayLabel(value.review_on)}
                     <br />

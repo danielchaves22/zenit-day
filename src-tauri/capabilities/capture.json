@@ -1,0 +1,6 @@
+{
+  "identifier": "capture",
+  "description": "Eventos locais da captura rápida do Windows",
+  "windows": ["capture"],
+  "permissions": ["core:event:allow-listen", "core:event:allow-unlisten"]
+}

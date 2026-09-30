@@ -1,12 +1,14 @@
 # Zenit Day — configurar o Supabase e conectar a aplicação
 
-Manual 1.2 · 26 de setembro de 2026 · Windows e Android
+Manual 1.3 · 29 de setembro de 2026 · Windows e Android
 
 ## Antes de começar
 
 Este manual prepara **um projeto Supabase seu**, com uma conta pessoal e um banco exclusivo para o Zenit Day. O aplicativo usará a mesma conta no Windows e no Android.
 
-Para usar o aplicativo **0.1.1**, conclua a preparação inicial abaixo e aplique também a atualização de [Meta de hoje](ATUALIZACAO_0.1.1.md). Se o banco já estiver configurado, siga somente esse guia de atualização, preservando a instalação existente.
+Para uma instalação nova do aplicativo **0.1.8**, conclua a preparação inicial abaixo e aplique, nesta ordem, as migrações de Meta de hoje (`202609280001_daily_goals.sql`), checklist (`20260929040145_subject_checklists.sql`), grupos (`20260929043137_subject_groups.sql`) e prioridade (`20260930023730_subject_priorities.sql`), todas em `supabase/migrations`. A migração do Zenit Hub é uma integração opcional separada.
+
+O projeto atual do Zenit Day já recebeu essas quatro atualizações pelo fluxo documentado nas entregas. Não é necessário executar novamente os passos de preparação. Consulte [Prioridade — atualização 0.1.8](ATUALIZACAO_0.1.8.md).
 
 **Os passos 1 a 7 preparam e verificam o serviço.** O projeto em `C:\dev\equinox\zenit-day` agora inclui o cliente React/Tauri, armazenamento local e sincronização. O passo 8 explica como a configuração chega aos aplicativos; o passo 9 valida o funcionamento nos seus dispositivos. Consulte também [Primeiro uso](PRIMEIRO_USO.md).
 

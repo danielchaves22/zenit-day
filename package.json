@@ -1,6 +1,6 @@
 {
   "name": "zenit-day",
-  "version": "0.1.5",
+  "version": "0.1.8",
   "private": true,
   "type": "module",
   "engines": {
@@ -20,6 +20,7 @@
     "supabase:check": "powershell.exe -NoProfile -File scripts/check-supabase.ps1"
   },
   "dependencies": {
+    "@supabase/supabase-js": "2.117.2",
     "@tauri-apps/api": "^2.11.1",
     "lucide-react": "^0.577.0",
     "react": "^19.3.0",

@@ -1,0 +1,9 @@
+.hub-consent-page{min-height:100dvh;display:grid;place-items:center;padding:24px;background:#edf3fb;color:#182b47;font-family:Inter,system-ui,sans-serif}
+.hub-consent-card{width:min(100%,480px);padding:36px;background:white;border:1px solid #dbe5f2;border-radius:22px;box-shadow:0 20px 60px #1e3a5f0d}
+.hub-consent-brand{font-size:12px;font-weight:800;letter-spacing:.16em;color:#2766bf;margin:0 0 20px}
+.hub-consent-card h1{font-size:27px;line-height:1.2;margin:0 0 14px}.hub-consent-card p{line-height:1.6}.hub-consent-card label{display:grid;gap:7px;margin:18px 0;font-size:14px;font-weight:600}
+.hub-consent-card input{width:100%;box-sizing:border-box;padding:12px;border:1px solid #c9d5e5;border-radius:9px;font:inherit;background:white;color:#182b47}
+.hub-consent-card input:focus{outline:2px solid #2766bf;outline-offset:2px}.hub-consent-card button{padding:12px 18px;border-radius:9px;border:1px solid #c9d5e5;font:inherit;font-weight:600;cursor:pointer}
+.hub-consent-card button:disabled{opacity:.6;cursor:wait}.hub-consent-card .hub-consent-primary{background:#245fb5;border-color:#245fb5;color:white}.hub-consent-card form button{width:100%}
+.hub-consent-card small{display:block;line-height:1.5;color:#617087;margin-top:24px}.hub-consent-account{display:grid;gap:4px;padding:16px;background:#f0f5fc;border-radius:10px;overflow-wrap:anywhere}.hub-consent-account span{font-size:13px;color:#617087}
+.hub-consent-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:24px}.hub-consent-error{color:#9e2633}@media(max-width:480px){.hub-consent-page{padding:14px}.hub-consent-card{padding:24px}.hub-consent-card h1{font-size:24px}}

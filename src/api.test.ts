@@ -45,11 +45,50 @@ it("holds subgroup requests until the server supports groups without rewriting l
   expect(JSON.stringify(op)).toBe(before);
   expect(fetch).toHaveBeenCalledTimes(1);
   delete op.doc.subgroup;
+  delete op.doc.priority;
   await api.save(op);
   expect(fetch).toHaveBeenCalledTimes(2);
   expect(
     JSON.parse(fetch.mock.calls[1][1]?.body as string).p_subject,
   ).not.toHaveProperty("subgroup");
+});
+it("keeps priority requests local until supported and sends the exact payload once ready", async () => {
+  const api = new Api(config);
+  api.session = { ...session, expires_at: Date.now() / 1000 + 3600 };
+  let supported = false;
+  const fetch = vi.fn<typeof globalThis.fetch>(
+    async () =>
+      new Response(
+        JSON.stringify({
+          application: "zenit-day",
+          schema_version: 1,
+          daily_goals: true,
+          checklist: true,
+          groups: true,
+          priorities: supported,
+        }),
+      ),
+  );
+  vi.stubGlobal("fetch", fetch);
+  await api.ready();
+  const op: Operation = {
+    id: "op",
+    subjectId: "s",
+    expectedRevision: 0,
+    doc: blankDoc("Retorno", "urgent"),
+    note: null,
+    createdAt: "now",
+  };
+  const before = JSON.stringify(op);
+  await expect(api.save(op)).rejects.toThrow("atualização Prioridade");
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(JSON.stringify(op)).toBe(before);
+  supported = true;
+  await api.ready();
+  await api.save(op);
+  expect(JSON.parse(fetch.mock.calls[2][1]?.body as string).p_subject).toEqual(
+    op.doc,
+  );
 });
 it("holds checklist operations intact until the server supports them", async () => {
   const api = new Api(config);

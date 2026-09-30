@@ -20,6 +20,10 @@ A versão 0.1.4 substitui **Projeto ou contexto** por **Grupo** e **Subgrupo**, 
 
 A versão 0.1.5 torna **Sem grupo** um painel retrátil no topo da lista, seguindo as mesmas preferências dos demais painéis. A busca e o salvamento revelam seus assuntos quando necessário. Não exige nova migração SQL. Veja [Atualização 0.1.5](docs/ATUALIZACAO_0.1.5.md).
 
+A versão 0.1.7 mantém o aplicativo na bandeja ao fechar a janela no Windows. Use **Sair do aplicativo** no menu da bandeja para encerrá-lo. Captura rápida e acesso à visão Hoje continuam disponíveis; iniciar com o Windows permanece opcional. Veja [Atualização 0.1.7](docs/ATUALIZACAO_0.1.7.md).
+
+A versão 0.1.8 acrescenta **Prioridade**: Baixa, Normal, Importante ou Urgente. O campo aparece na criação, edição, inclusão rápida da lista e captura da bandeja. Normal é o padrão, a ordem da lista é preservada e a prioridade sincroniza entre Windows e Android. Veja [Atualização 0.1.8](docs/ATUALIZACAO_0.1.8.md).
+
 ## Desenvolvimento
 
 ```powershell

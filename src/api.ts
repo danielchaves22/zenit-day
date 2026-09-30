@@ -39,6 +39,7 @@ export class Api {
   private dailyGoalsSupported = false;
   private checklistSupported = false;
   private groupsSupported = false;
+  private prioritiesSupported = false;
   private refreshPromise: Promise<Session> | null = null;
   private epoch = 0;
   private writes: Promise<unknown> = Promise.resolve();
@@ -196,6 +197,7 @@ export class Api {
     this.dailyGoalsSupported = r.daily_goals === true;
     this.checklistSupported = r.checklist === true;
     this.groupsSupported = r.groups === true;
+    this.prioritiesSupported = r.priorities === true;
   }
   async save(
     op: Operation,
@@ -214,6 +216,10 @@ export class Api {
     if (!this.groupsSupported && "subgroup" in op.doc)
       throw new Error(
         "Falta aplicar a atualização Grupos no Supabase. Suas alterações estão salvas neste dispositivo; sincronize novamente após a atualização.",
+      );
+    if (!this.prioritiesSupported && "priority" in op.doc)
+      throw new Error(
+        "Falta aplicar a atualização Prioridade no Supabase. Suas alterações estão salvas neste dispositivo; sincronize novamente após a atualização.",
       );
     return this.authorized("/rest/v1/rpc/zenit_day_save_subject", {
       method: "POST",

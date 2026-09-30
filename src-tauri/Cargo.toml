@@ -1,6 +1,6 @@
 [package]
 name = "zenit-day"
-version = "0.1.5"
+version = "0.1.8"
 description = "Acompanhamento pessoal de assuntos"
 authors = ["Zenit"]
 edition = "2021"
@@ -19,6 +19,10 @@ serde_json = "1"
 rusqlite = { version = "0.38", features = ["bundled"] }
 
 [target.'cfg(windows)'.dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-autostart = "2"
+tauri-plugin-single-instance = "2"
+tokio = { version = "1", features = ["sync", "time"] }
 tauri-plugin-dialog = "2"
 windows-sys = { version = "0.61", features = ["Win32_Security_Cryptography", "Win32_Foundation"] }
 

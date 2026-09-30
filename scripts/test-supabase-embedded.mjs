@@ -43,9 +43,23 @@ try {
   );
   for (const result of groupResults)
     for (const row of result.rows ?? []) if (row.result) console.log(row);
+  const hubMigration = await read("../supabase/migrations/20260929162635_hub_oauth_read_only.sql");
+  await db.exec(hubMigration);
+  await db.exec(hubMigration);
+  const hubResults = await db.exec(await read("../tests/hub-readonly.integration.sql"));
+  for (const result of hubResults)
+    for (const row of result.rows ?? []) if (row.result) console.log(row);
   console.log(
     "SQL validado em PostgreSQL embarcado (PGlite). Auth simulado; Supabase real não acessado.",
   );
+  const priorityMigration = await read("../supabase/migrations/20260930023730_subject_priorities.sql");
+  await db.exec(priorityMigration);
+  await db.exec(priorityMigration);
+  for (const file of ["priorities.integration.sql", "hub-readonly.integration.sql"]) {
+    const results = await db.exec(await read("../tests/" + file));
+    for (const result of results)
+      for (const row of result.rows ?? []) if (row.result) console.log(row);
+  }
 } finally {
   await db.close();
 }

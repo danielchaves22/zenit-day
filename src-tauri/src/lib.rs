@@ -2,8 +2,17 @@ use rusqlite::{params, Connection, OptionalExtension};
 use serde::Serialize;
 use std::sync::Mutex;
 use tauri::Manager;
+#[cfg(windows)]
+mod desktop;
 
 struct Database(Mutex<Connection>);
+fn require_main<R: tauri::Runtime>(window: &tauri::WebviewWindow<R>) -> Result<(), String> {
+    if window.label() == "main" {
+        Ok(())
+    } else {
+        Err("Acesso disponível apenas na janela principal.".into())
+    }
+}
 #[derive(Serialize)]
 struct Snapshot {
     version: i64,
@@ -65,17 +74,24 @@ fn write_state(
     Ok(version + 1)
 }
 #[tauri::command]
-fn workspace_read(db: tauri::State<Database>, namespace: String) -> Result<Snapshot, String> {
+fn workspace_read(
+    window: tauri::WebviewWindow,
+    db: tauri::State<Database>,
+    namespace: String,
+) -> Result<Snapshot, String> {
+    require_main(&window)?;
     let connection = db.0.lock().map_err(|_| "Armazenamento ocupado.")?;
     read_state(&connection, &namespace)
 }
 #[tauri::command]
 fn workspace_write(
+    window: tauri::WebviewWindow,
     db: tauri::State<Database>,
     namespace: String,
     expected: i64,
     data: String,
 ) -> Result<i64, String> {
+    require_main(&window)?;
     let mut connection = db.0.lock().map_err(|_| "Armazenamento ocupado.")?;
     write_state(&mut connection, &namespace, expected, &data)
 }
@@ -131,9 +147,11 @@ struct AndroidVault<R: tauri::Runtime>(tauri::plugin::PluginHandle<R>);
 
 #[tauri::command]
 async fn session_read<R: tauri::Runtime>(
+    window: tauri::WebviewWindow<R>,
     app: tauri::AppHandle<R>,
     namespace: String,
 ) -> Result<Option<String>, String> {
+    require_main(&window)?;
     #[cfg(windows)]
     {
         let db = app.state::<Database>();
@@ -174,10 +192,12 @@ async fn session_read<R: tauri::Runtime>(
 }
 #[tauri::command]
 async fn session_write<R: tauri::Runtime>(
+    window: tauri::WebviewWindow<R>,
     app: tauri::AppHandle<R>,
     namespace: String,
     value: Option<String>,
 ) -> Result<(), String> {
+    require_main(&window)?;
     #[cfg(windows)]
     {
         let db = app.state::<Database>();
@@ -211,10 +231,12 @@ async fn session_write<R: tauri::Runtime>(
 }
 #[tauri::command]
 async fn export_backup<R: tauri::Runtime>(
+    window: tauri::WebviewWindow<R>,
     app: tauri::AppHandle<R>,
     name: String,
     contents: String,
 ) -> Result<bool, String> {
+    require_main(&window)?;
     #[cfg(windows)]
     {
         use tauri_plugin_dialog::DialogExt;
@@ -252,8 +274,10 @@ async fn export_backup<R: tauri::Runtime>(
 }
 #[tauri::command]
 async fn import_backup<R: tauri::Runtime>(
+    window: tauri::WebviewWindow<R>,
     app: tauri::AppHandle<R>,
 ) -> Result<Option<String>, String> {
+    require_main(&window)?;
     #[cfg(windows)]
     {
         use tauri_plugin_dialog::DialogExt;
@@ -298,7 +322,23 @@ async fn import_backup<R: tauri::Runtime>(
 pub fn run() {
     let builder = tauri::Builder::default();
     #[cfg(windows)]
-    let builder = builder.plugin(tauri_plugin_dialog::init());
+    let builder = builder
+        .plugin(tauri_plugin_single_instance::init(|app, args, _| {
+            let action = if args.iter().any(|a| a == "--capture") {
+                "capture"
+            } else if args.iter().any(|a| a == "--today") {
+                "today"
+            } else {
+                "open"
+            };
+            desktop::dispatch(app, action);
+        }))
+        .plugin(
+            tauri_plugin_autostart::Builder::new()
+                .args(["--background"])
+                .build(),
+        )
+        .plugin(tauri_plugin_dialog::init());
     #[cfg(target_os = "android")]
     let builder = builder.plugin(
         tauri::plugin::Builder::<_, ()>::new("vault")
@@ -310,23 +350,53 @@ pub fn run() {
             })
             .build(),
     );
-    builder
+    let builder = builder
         .setup(|app| {
             let directory = app.path().app_data_dir()?;
             std::fs::create_dir_all(&directory)?;
             let connection = Connection::open(directory.join("zenit-day.sqlite"))?;
             initialize(&connection)?;
             app.manage(Database(Mutex::new(connection)));
+            #[cfg(windows)]
+            desktop::setup(app)?;
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![
-            workspace_read,
-            workspace_write,
-            session_read,
-            session_write,
-            export_backup,
-            import_backup
-        ])
+        .on_window_event(|window, event| {
+            #[cfg(windows)]
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                desktop::on_close(window, api);
+            }
+            #[cfg(not(windows))]
+            let _ = (window, event);
+        });
+    #[cfg(windows)]
+    let builder = builder.invoke_handler(tauri::generate_handler![
+        workspace_read,
+        workspace_write,
+        session_read,
+        session_write,
+        export_backup,
+        import_backup,
+        desktop::desktop_preferences,
+        desktop::desktop_set_preference,
+        desktop::desktop_status,
+        desktop::desktop_take_today,
+        desktop::desktop_open_capture,
+        desktop::desktop_capture_context,
+        desktop::desktop_close_capture,
+        desktop::desktop_capture_submit,
+        desktop::desktop_capture_finish
+    ]);
+    #[cfg(not(windows))]
+    let builder = builder.invoke_handler(tauri::generate_handler![
+        workspace_read,
+        workspace_write,
+        session_read,
+        session_write,
+        export_backup,
+        import_backup
+    ]);
+    builder
         .run(tauri::generate_context!())
         .expect("Não foi possível iniciar o Zenit Day");
 }

@@ -6,6 +6,15 @@ export const statuses = {
   done: "Concluído",
 } as const;
 export type Status = keyof typeof statuses;
+export const priorities = {
+  low: "Baixa",
+  normal: "Normal",
+  important: "Importante",
+  urgent: "Urgente",
+} as const;
+export type Priority = keyof typeof priorities;
+export const priorityOf = (doc: { priority?: Priority }): Priority =>
+  doc.priority ?? "normal";
 export const dailyGoals = {
   start: "Iniciar",
   advance: "Avançar",
@@ -29,6 +38,8 @@ export interface SubjectDoc {
   // project is the group name, retained for compatibility with existing clients.
   subgroup?: string | null;
   status: Status;
+  // Omission must survive legacy queue retries and backup restores.
+  priority?: Priority;
   situation: string;
   next_action: string;
   review_on: string | null;
@@ -104,13 +115,17 @@ export function dayLabel(date: string | null) {
       })
     : "Sem data";
 }
-export function blankDoc(title = ""): SubjectDoc {
+export function blankDoc(
+  title = "",
+  priority: Priority = "normal",
+): SubjectDoc {
   return {
     title,
     responsible_is_self: true,
     responsible_name: null,
     project: null,
     status: "todo",
+    priority,
     situation: "",
     next_action: "",
     review_on: today(),
@@ -129,6 +144,7 @@ export function documentOf(s: SubjectDoc): SubjectDoc {
     responsible_name: s.responsible_name,
     project: s.project,
     status: s.status,
+    ...(s.priority === undefined ? {} : { priority: s.priority }),
     situation: s.situation,
     next_action: s.next_action,
     review_on: s.review_on,
@@ -155,6 +171,12 @@ function validDate(value: unknown) {
   return !Number.isNaN(d.valueOf()) && d.toISOString().slice(0, 10) === value;
 }
 export function validateDoc(doc: SubjectDoc) {
+  if (
+    doc.priority !== undefined &&
+    (typeof doc.priority !== "string" ||
+      !Object.hasOwn(priorities, doc.priority))
+  )
+    throw new Error("Escolha uma prioridade válida.");
   if (
     doc.subgroup !== undefined &&
     doc.subgroup !== null &&

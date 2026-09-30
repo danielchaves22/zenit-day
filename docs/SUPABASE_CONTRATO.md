@@ -73,6 +73,14 @@ Não há exclusão física pelo aplicativo nesta versão. `archived` preserva o 
 - A exportação contém o snapshot completo sem sessão; a restauração importa os documentos dos assuntos como novos registros e preserva os existentes. O histórico original permanece no arquivo exportado.
 - Grupo/subgrupo sincronizam como parte do assunto. A abertura dos painéis é uma preferência local, particionada por serviço, conta e visão, sem sincronização entre dispositivos. Hoje começa aberto; as outras visões começam recolhidas. A busca revela resultados sem alterar essa preferência, e salvar um assunto abre seu painel de destino.
 
+## Prioridade (0.1.8)
+
+`priority` aceita `low`, `normal`, `important` ou `urgent`; a coluna é obrigatória, com padrão `normal`. A RPC aceita a ausência do campo para preservar o contrato antigo: novas inclusões recebem Normal e atualizações antigas conservam a prioridade existente. Solicitações que enviam um valor nulo, desconhecido ou de outro tipo são rejeitadas.
+
+O cliente mantém a ausência do campo em filas e backups antigos para preservar os recibos de idempotência. O endpoint de verificação mantém `schema_version=1` e acrescenta `priorities=true` e `schema_revision=5`. Clientes novos retêm solicitações com prioridade na fila local até o serviço confirmar esse suporte.
+
+A migração `20260930023730_subject_priorities.sql` e a suíte SQL foram executadas no projeto real. Os 12 assuntos existentes receberam Normal e o checksum dos demais campos permaneceu igual. Fixtures de teste foram revertidas. Veja [Validação 0.1.8](VALIDACAO_0.1.8.md).
+
 ## Limite da validação atual
 
 O contrato SQL foi testado localmente em PostgreSQL 14, incluindo duas identidades, bloqueio anônimo, gravações diretas negadas, reenvios, conflitos e datas. O usuário confirmou a conclusão dos passos de configuração do Supabase. Testes do cliente usam contas e respostas simuladas; o teste autenticado final com a conta real e os dispositivos do usuário continua necessário. Veja `PRIMEIRO_USO.md`.
