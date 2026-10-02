@@ -76,6 +76,18 @@ try {
     await read("../tests/reminders.integration.sql"),
   ))
     for (const row of result.rows ?? []) if (row.result) console.log(row);
+  await db.exec(
+    await read(
+      "../supabase/migrations/20261002111335_hub_reminder_consent.sql",
+    ),
+  );
+  for (const file of [
+    "hub-reminders.integration.sql",
+    "hub-readonly.integration.sql",
+    "reminders.integration.sql",
+  ])
+    for (const result of await db.exec(await read("../tests/" + file)))
+      for (const row of result.rows ?? []) if (row.result) console.log(row);
 } finally {
   await db.close();
 }

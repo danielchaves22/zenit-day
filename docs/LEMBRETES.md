@@ -24,7 +24,13 @@ Migração: `supabase/migrations/20261002062738_recurring_reminders.sql`, já ap
 
 As autorizações OAuth antigas permanecem sem acesso aos novos lembretes. A etapa Hub deverá acrescentar consentimento revogável específico antes de permitir leitura agendada ou mutações pelo chat. As permissões dos assuntos continuam somente leitura.
 
-## Fluxo previsto para notificações (próxima etapa)
+## Integração Hub
+
+A migração `hub_reminder_consent` e a página `/hub/reminders` acrescentam autorização específica para o cliente OAuth do Hub consultar e gerenciar lembretes. A sessão direta do Day deve conceder o acesso; tokens do Hub não podem fazê-lo. A autorização pode ser revogada na mesma página. O cliente OAuth deve ser cadastrado pelo administrador na tabela privada `reminder_clients` em cada ambiente. Não há acesso anônimo, acesso entre contas ou ampliação das permissões de escrita de assuntos.
+
+O endpoint `zenit_day_reminder_occurrences` calcula ocorrências em janela de no máximo cinco minutos, com RLS e verificação do consentimento. Retorna no máximo 500 ocorrências e sinaliza truncamento. Desconsidera ocorrências anteriores à última alteração da regra. A entrega continua pertencendo ao Hub e exige assinatura independente e template aprovado na Meta.
+
+## Fluxo para notificações
 
 Assinaturas fixas pertencem ao Hub. O comando “notificações” mostra o catálogo; “quero o resumo diário às 7h” prepara uma confirmação com horário, fuso e fontes. O botão de confirmação registra a autorização e ativa a assinatura. O usuário pode consultar, alterar horário/fontes, pausar, cancelar e reassinar. Conectar uma aplicação não assina notificações automaticamente.
 
@@ -32,7 +38,7 @@ Lembretes personalizados pertencem ao Day. O Hub consultará as ocorrências dev
 
 O Day não precisa conhecer número de WhatsApp nem credenciais da Meta; basta estar sincronizado na nuvem. O Hub guarda canal, consentimento, preferências e entrega. Pausar um lembrete afeta sua regra; cancelar o canal WhatsApp preserva o lembrete no Day. Adiar uma ocorrência, quando implementado, não altera a série. Não reenviar uma fila de avisos obsoletos após indisponibilidade.
 
-Fora da janela de 24 horas, a entrega deverá usar templates aprovados. A assinatura não substitui essa exigência. Templates, autorização específica, agendador, assinaturas, resumo diário e botões de adiamento ainda não fazem parte da gestão 0.1.9. A IA interpretará pedidos de configuração; não será necessária em cada disparo de lembrete.
+Fora da janela de 24 horas, a entrega exige templates aprovados. A assinatura não substitui essa exigência. O código do Hub fornece catálogo, assinaturas, agendador, resumo diário e gestão pelo chat; o envio depende da configuração/aprovação dos templates e do consentimento do usuário. Adiamento de ocorrências permanece para uma etapa posterior. A IA interpreta pedidos de configuração; não é necessária em cada disparo de lembrete.
 
 Referências verificadas em 02/10/2026: [política WhatsApp](https://whatsappbusiness.com/policy/), [OAuth e RLS Supabase](https://supabase.com/docs/guides/auth/oauth-server/token-security).
 

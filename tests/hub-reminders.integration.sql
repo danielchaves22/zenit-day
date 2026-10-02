@@ -1,0 +1,52 @@
+begin;
+insert into zenit_day_private.reminder_clients values ('7a30e372-a6dc-4369-9302-a26963bf219e');
+select set_config('zenit_test.uid',gen_random_uuid()::text,true);
+select set_config('zenit_test.other',gen_random_uuid()::text,true);
+insert into auth.users(id) values(current_setting('zenit_test.uid')::uuid),(current_setting('zenit_test.other')::uuid);
+set local role authenticated;
+select set_config('request.jwt.claim.sub',current_setting('zenit_test.uid'),true);
+select set_config('request.jwt.claims','{}',true);
+do $$
+declare client text := '7a30e372-a6dc-4369-9302-a26963bf219e'; id uuid:=gen_random_uuid(); op uuid:=gen_random_uuid(); r jsonb; n int;
+  doc jsonb:=jsonb_build_object('title','Only my reminder','subject_id',null,'enabled',true,'deleted',false,'schedule',
+    jsonb_build_object('kind','interval','timeZone','America/Sao_Paulo','startAt',now()+interval '1 minute','endAt',null,'times','[]'::jsonb,'weekDays','[]'::jsonb,'monthDay',null,'intervalMinutes',1,'windowStart',null,'windowEnd',null));
+begin
+  perform set_config('request.jwt.claims',jsonb_build_object('client_id',client)::text,true);
+  if (public.zenit_day_hub_reminders_check()->>'authorized')::boolean then raise exception 'Expanded old grant'; end if;
+  begin perform public.zenit_day_set_reminder_consent(client,true); raise exception 'OAuth self-granted'; exception when insufficient_privilege then null; end;
+  begin perform public.zenit_day_save_reminder(op,id,0,doc); raise exception 'OAuth wrote before consent'; exception when insufficient_privilege then null; end;
+  perform set_config('request.jwt.claims','{}',true);
+  begin perform public.zenit_day_set_reminder_consent('untrusted-client',true); raise exception 'Untrusted client'; exception when invalid_parameter_value then null; end;
+  perform public.zenit_day_set_reminder_consent(client,true);
+  perform set_config('request.jwt.claims',jsonb_build_object('client_id',client)::text,true);
+  if not (public.zenit_day_hub_reminders_check()->>'authorized')::boolean then raise exception 'Consent not available'; end if;
+  r:=public.zenit_day_save_reminder(op,id,0,doc);
+  if r->>'result'<>'saved' then raise exception 'Authorized mutation failed'; end if;
+  if public.zenit_day_save_reminder(op,id,0,doc)<>r then raise exception 'Retry not idempotent'; end if;
+  select count(*) into n from public.zenit_day_reminders;
+  if n<>1 then raise exception 'Authorized read failed'; end if;
+  r:=public.zenit_day_reminder_occurrences(now(),now()+interval '3 minutes');
+  if jsonb_array_length(r->'items')<>3 then raise exception 'Occurrence boundaries failed: %',r; end if;
+  begin perform public.zenit_day_reminder_occurrences(now(),now()+interval '6 minutes'); raise exception 'Unbounded query'; exception when invalid_parameter_value then null; end;
+  begin perform public.zenit_day_save_subject(gen_random_uuid(),gen_random_uuid(),0,'{"title":"Must stay read-only","status":"todo","responsible_is_self":true,"archived":false}'); raise exception 'Subjects expanded'; exception when insufficient_privilege then null; end;
+  perform set_config('request.jwt.claim.sub',current_setting('zenit_test.other'),true);
+  select count(*) into n from public.zenit_day_reminders;
+  if n<>0 or (public.zenit_day_hub_reminders_check()->>'authorized')::boolean then raise exception 'Cross-account consent'; end if;
+  perform set_config('request.jwt.claim.sub',current_setting('zenit_test.uid'),true);
+  perform set_config('request.jwt.claims','{"client_id":"another-client"}',true);
+  select count(*) into n from public.zenit_day_reminders;
+  if n<>0 then raise exception 'Cross-client disclosure'; end if;
+  perform set_config('request.jwt.claims','{}',true);
+  perform public.zenit_day_set_reminder_consent(client,false);
+  perform set_config('request.jwt.claims',jsonb_build_object('client_id',client)::text,true);
+  begin perform public.zenit_day_save_reminder(op,id,0,doc); raise exception 'Receipt leaked after revocation'; exception when insufficient_privilege then null; end;
+  select count(*) into n from public.zenit_day_reminders;
+  if n<>0 then raise exception 'Revoked consent still reads'; end if;
+  begin perform public.zenit_day_reminder_occurrences(now(),now()); raise exception 'Revoked polling'; exception when insufficient_privilege then null; end;
+end $$;
+set local role anon;
+do $$ begin
+  begin perform public.zenit_day_set_reminder_consent('7a30e372-a6dc-4369-9302-a26963bf219e',true); raise exception 'Anon consent'; exception when insufficient_privilege then null; end;
+end $$;
+rollback;
+select 'Hub reminder consent: explicit grant/revoke, client/owner isolation, occurrences and subjects read-only passed' as result;
