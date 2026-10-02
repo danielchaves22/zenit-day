@@ -47,3 +47,11 @@ O OAuth Server foi habilitado com Site URL `https://zenit-day.onrender.com`, Aut
 Uma solicitação OAuth de teste, sem login nem autorização de usuário, redirecionou corretamente para o formulário publicado. A conexão pessoal e a consulta via WhatsApp ainda aguardam o teste do usuário.
 
 Referências: [OAuth Server](https://supabase.com/docs/guides/auth/oauth-server/getting-started), [Token security](https://supabase.com/docs/guides/auth/oauth-server/token-security).
+
+## Lembretes em 02/10/2026
+
+O acesso a assuntos continua somente para leitura. A migração hospedada `20261002111335_hub_reminder_consent` acrescenta autorização específica e revogável para lembretes, sem ampliar autorizações antigas. O cliente OAuth existente foi cadastrado na lista privada de clientes permitidos; nenhum consentimento de usuário foi criado durante a implantação.
+
+A página `https://zenit-day.onrender.com/hub/reminders` usa login direto do Day, sem sessão persistida no navegador, para conceder ou revogar esse acesso. O Static Site recebeu uma regra adicional **rewrite `/hub/reminders` → `/index.html`**, preservando a regra de OAuth. A rota respondeu HTTP 200 e exibiu o formulário após a publicação. Novas instalações devem configurar ambas as regras, conforme a [documentação de rewrites do Render](https://render.com/docs/redirects-rewrites).
+
+Depois dessa autorização, a assinatura de envio deve ser confirmada separadamente no WhatsApp. O Hub também depende de templates aprovados na Meta. Veja [Lembretes](LEMBRETES.md) para recorrência e limites de entrega.
