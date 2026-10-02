@@ -1,3 +1,5 @@
+import type { RemindersState } from "./reminders";
+import { validateReminder } from "./reminders";
 export const statuses = {
   todo: "A fazer",
   doing: "Em andamento",
@@ -93,6 +95,7 @@ export interface Workspace {
   conflicts: Record<string, Conflict>;
   recovery: Recovery[];
   lastSync: string | null;
+  reminders?: RemindersState;
 }
 export const emptyWorkspace = (): Workspace => ({
   schema: 1,
@@ -538,6 +541,32 @@ export function parseBackup(
   for (const [id, s] of Object.entries(b.workspace.subjects)) {
     validateSubject(s, userId);
     if (id !== s.id) throw new Error("Identificação inválida na cópia.");
+  }
+  if (b.workspace.reminders) {
+    const r = b.workspace.reminders;
+    if (!r.rows || !Array.isArray(r.queue) || !r.conflicts)
+      throw new Error("Cópia de lembretes inválida.");
+    for (const [id, row] of Object.entries(r.rows)) {
+      validateReminder(row);
+      if (
+        id !== row.id ||
+        !uuid.test(id) ||
+        row.user_id !== userId ||
+        !Number.isInteger(row.revision) ||
+        row.revision < 0
+      )
+        throw new Error("Lembrete inválido na cópia.");
+    }
+    for (const op of r.queue) {
+      validateReminder(op.doc);
+      if (
+        !uuid.test(op.id) ||
+        !r.rows[op.reminderId] ||
+        !Number.isInteger(op.expectedRevision) ||
+        op.expectedRevision < 0
+      )
+        throw new Error("Operação de lembrete inválida na cópia.");
+    }
   }
   return b;
 }

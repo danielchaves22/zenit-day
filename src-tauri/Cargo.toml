@@ -1,6 +1,6 @@
 [package]
 name = "zenit-day"
-version = "0.1.8"
+version = "0.1.9"
 description = "Acompanhamento pessoal de assuntos"
 authors = ["Zenit"]
 edition = "2021"

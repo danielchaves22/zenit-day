@@ -7,15 +7,18 @@ import {
 } from "@playwright/test";
 import type { Subject, Update } from "../../src/model";
 import { blankDoc, today } from "../../src/model";
+import type { Reminder } from "../../src/reminders";
 const uid = "11111111-1111-4111-8111-111111111111";
 const bob = "22222222-2222-4222-8222-222222222222";
 function mockService() {
   const rows = new Map<string, Subject>();
   const history: Update[] = [];
+  const reminders = new Map<string, Reminder>();
   const receipts = new Map<string, unknown>();
   let writes = 0;
   return {
     rows,
+    reminders,
     get writes() {
       return writes;
     },
@@ -51,6 +54,7 @@ function mockService() {
             checklist: true,
             groups: true,
             priorities: true,
+            reminders: true,
           };
         else if (url.pathname.endsWith("/zenit_day_save_subject")) {
           const key = user + "|" + data.p_subject_id;
@@ -92,7 +96,34 @@ function mockService() {
               writes++;
             }
           }
-        } else if (url.pathname.endsWith("/zenit_day_subjects"))
+        } else if (url.pathname.endsWith("/zenit_day_save_reminder")) {
+          const key = user + "|" + data.p_reminder_id,
+            receipt = user + "|" + data.p_operation_id;
+          if (receipts.has(receipt)) result = receipts.get(receipt);
+          else if (
+            (reminders.get(key)?.revision ?? 0) !== data.p_expected_revision
+          )
+            result = {
+              result: "conflict",
+              reminder: reminders.get(key) ?? null,
+            };
+          else {
+            const now = new Date().toISOString();
+            const reminder = {
+              ...data.p_reminder,
+              id: data.p_reminder_id,
+              user_id: user,
+              revision: data.p_expected_revision + 1,
+              created_at: reminders.get(key)?.created_at ?? now,
+              updated_at: now,
+            };
+            reminders.set(key, reminder);
+            result = { result: "saved", reminder };
+            receipts.set(receipt, result);
+          }
+        } else if (url.pathname.endsWith("/zenit_day_reminders"))
+          result = [...reminders.values()].filter((r) => r.user_id === user);
+        else if (url.pathname.endsWith("/zenit_day_subjects"))
           result = [...rows.values()].filter((s) => s.user_id === user);
         else if (url.pathname.endsWith("/zenit_day_updates"))
           result = history.filter((h) => h.user_id === user);
@@ -114,6 +145,98 @@ async function login(page: Page, email = "alice@example.test") {
     page.getByRole("heading", { name: "Hoje", exact: true }),
   ).toBeVisible();
 }
+
+test("reminders: offline management, mobile sync and deletion", async ({
+  browser,
+}) => {
+  const backend = mockService();
+  const desktop = await browser.newContext({
+    viewport: { width: 1280, height: 900 },
+  });
+  const phone = await browser.newContext({
+    viewport: { width: 320, height: 800 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  const net = { online: true };
+  await backend.attach(desktop, net);
+  await backend.attach(phone, { online: true });
+  const page = await desktop.newPage(),
+    mobile = await phone.newPage();
+  await login(page);
+  await page.getByRole("button", { name: "Lembretes", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Novo lembrete", exact: true })
+    .click();
+  await page.getByLabel("O que lembrar?").fill("Lançar horas do mês");
+  await page
+    .getByRole("combobox", { name: "Repetir", exact: true })
+    .selectOption("monthly");
+  await page.getByLabel("Dia do mês", { exact: true }).fill("29");
+  await expect(page.getByText("Quando o mês não tiver esse dia")).toBeVisible();
+  net.online = false;
+  await page
+    .getByRole("button", { name: "Salvar lembrete", exact: true })
+    .click();
+  await expect(page.locator(".reminder-row")).toContainText(
+    "Lançar horas do mês",
+  );
+  expect(backend.reminders.size).toBe(0);
+  await page.getByRole("button", { name: "Fechar", exact: true }).click();
+  net.online = true;
+  await page.getByRole("button", { name: "Sincronizar agora" }).click();
+  await expect.poll(() => backend.reminders.size).toBe(1);
+  await page.getByRole("button", { name: "Lembretes", exact: true }).click();
+  await page.screenshot({
+    path: "test-results/reminders-desktop.png",
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "Pausar", exact: true }).click();
+  await expect
+    .poll(() => [...backend.reminders.values()][0].enabled)
+    .toBe(false);
+  await login(mobile);
+  await mobile.getByRole("button", { name: "Lembretes", exact: true }).click();
+  await expect(mobile.locator(".reminder-row")).toContainText("Pausado");
+  await mobile.getByRole("button", { name: "Editar", exact: true }).click();
+  await mobile
+    .getByRole("combobox", { name: "Repetir", exact: true })
+    .selectOption("daily");
+  await mobile.getByLabel("Horário 1", { exact: true }).fill("07:00");
+  await mobile.getByRole("button", { name: "Adicionar horário" }).click();
+  await mobile.getByLabel("Horário 2", { exact: true }).fill("15:00");
+  await mobile.getByRole("button", { name: "Adicionar horário" }).click();
+  await mobile.getByLabel("Horário 3", { exact: true }).fill("23:00");
+  await mobile.screenshot({
+    path: "test-results/reminders-mobile.png",
+    fullPage: true,
+  });
+  expect(
+    await mobile
+      .getByRole("dialog")
+      .evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
+  ).toBe(true);
+  await mobile
+    .getByRole("button", { name: "Salvar lembrete", exact: true })
+    .click();
+  await expect
+    .poll(() => [...backend.reminders.values()][0].schedule.times)
+    .toEqual(["07:00", "15:00", "23:00"]);
+  await mobile.getByRole("button", { name: "Retomar", exact: true }).click();
+  await expect
+    .poll(() => [...backend.reminders.values()][0].enabled)
+    .toBe(true);
+  await mobile.getByRole("button", { name: "Excluir", exact: true }).click();
+  await mobile
+    .getByRole("button", { name: "Excluir lembrete", exact: true })
+    .click();
+  await expect
+    .poll(() => [...backend.reminders.values()][0].deleted)
+    .toBe(true);
+  await expect(mobile.locator(".reminder-row")).toHaveCount(0);
+  await desktop.close();
+  await phone.close();
+});
 
 test("priority: quick entry, editing, mobile sync, offline conflict and stable ordering", async ({
   browser,

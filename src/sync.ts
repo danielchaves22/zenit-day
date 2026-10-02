@@ -1,6 +1,12 @@
 import { acknowledge, mergeRemote, validateSubject } from "./model";
 import type { Api } from "./api";
 import type { Repository } from "./storage";
+import {
+  acknowledgeReminder,
+  mergeReminders,
+  remindersOf,
+  validateReminderRow,
+} from "./reminders";
 export class Synchronizer {
   private running: Promise<void> | null = null;
   private stopped = false;
@@ -58,5 +64,41 @@ export class Synchronizer {
       await this.repo.mutate((w) =>
         mergeRemote(w, subjects, history, this.userId),
       );
+    if (this.stopped || this.api.session?.user.id !== this.userId) return;
+    if (!this.api.remindersSupported) {
+      if (this.repo.current.reminders?.queue.length)
+        throw new Error(
+          "A atualização Lembretes precisa ser aplicada no Supabase. Suas alterações estão salvas neste dispositivo.",
+        );
+      return;
+    }
+    for (let i = 0; i < 100 && !this.stopped; i++) {
+      if (this.api.session?.user.id !== this.userId) return;
+      const state = this.repo.current.reminders;
+      const op = state?.queue.find(
+        (o) => !Object.hasOwn(state.conflicts, o.reminderId),
+      );
+      if (!op) break;
+      const result = await this.api.saveReminder(op);
+      if (this.stopped || this.api.session?.user.id !== this.userId) return;
+      if (result.result === "saved" && result.reminder) {
+        await this.repo.mutate((w) =>
+          acknowledgeReminder(w, op, result.reminder!, this.userId),
+        );
+      } else if (result.result === "conflict") {
+        if (result.reminder) {
+          validateReminderRow(result.reminder, this.userId);
+          if (result.reminder.id !== op.reminderId)
+            throw new Error("Conflito de lembrete inválido.");
+        }
+        await this.repo.mutate((w) => {
+          remindersOf(w).conflicts[op.reminderId] = result.reminder;
+        });
+      } else throw new Error("Resposta de lembrete inválida.");
+    }
+    if (this.stopped || this.api.session?.user.id !== this.userId) return;
+    const reminders = await this.api.reminders();
+    if (!this.stopped && this.api.session?.user.id === this.userId)
+      await this.repo.mutate((w) => mergeReminders(w, reminders, this.userId));
   }
 }

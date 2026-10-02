@@ -26,6 +26,8 @@ A versão 0.1.8 acrescenta **Prioridade**: Baixa, Normal, Importante ou Urgente.
 
 ## Desenvolvimento
 
+A versão 0.1.9 acrescenta a gestão de **Lembretes**, pelo sino no cabeçalho: criar, editar, pausar, retomar e excluir, com vínculo opcional a um assunto, fila offline e resolução de conflitos. Suporta horários diários, dias da semana, dia do mês (ajustado ao último dia quando necessário), intervalos contínuos ou dentro de uma faixa diária e término opcional. A gestão não dispara notificações por si só; assinaturas e entrega pelo WhatsApp serão implementadas no Hub. Veja [Lembretes e notificações](docs/LEMBRETES.md).
+
 ```powershell
 npm install
 npm run dev

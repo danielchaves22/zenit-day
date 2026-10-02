@@ -1,5 +1,6 @@
 import { secureSession } from "./storage";
 import { type Operation, type Subject, type Update } from "./model";
+import type { Reminder, ReminderOperation } from "./reminders";
 export interface Session {
   access_token: string;
   refresh_token: string;
@@ -40,6 +41,7 @@ export class Api {
   private checklistSupported = false;
   private groupsSupported = false;
   private prioritiesSupported = false;
+  remindersSupported = false;
   private refreshPromise: Promise<Session> | null = null;
   private epoch = 0;
   private writes: Promise<unknown> = Promise.resolve();
@@ -198,6 +200,7 @@ export class Api {
     this.checklistSupported = r.checklist === true;
     this.groupsSupported = r.groups === true;
     this.prioritiesSupported = r.priorities === true;
+    this.remindersSupported = r.reminders === true;
   }
   async save(
     op: Operation,
@@ -254,5 +257,25 @@ export class Api {
   }
   history() {
     return this.all<Update>("zenit_day_updates");
+  }
+  reminders() {
+    return this.all<Reminder>("zenit_day_reminders");
+  }
+  saveReminder(
+    op: ReminderOperation,
+  ): Promise<{ result: "saved" | "conflict"; reminder: Reminder | null }> {
+    if (!this.remindersSupported)
+      throw new Error(
+        "A atualização Lembretes precisa ser aplicada no Supabase. Suas alterações estão salvas neste dispositivo.",
+      );
+    return this.authorized("/rest/v1/rpc/zenit_day_save_reminder", {
+      method: "POST",
+      body: JSON.stringify({
+        p_operation_id: op.id,
+        p_reminder_id: op.reminderId,
+        p_expected_revision: op.expectedRevision,
+        p_reminder: op.doc,
+      }),
+    });
   }
 }

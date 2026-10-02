@@ -9,6 +9,7 @@ import {
 } from "react";
 import {
   ArrowLeft,
+  Bell,
   ArrowRight,
   Archive,
   Check,
@@ -73,6 +74,8 @@ import { GroupPanel } from "./GroupPanel";
 import { QuickCapture } from "./QuickCapture";
 import { PriorityPicker } from "./PriorityPicker";
 import { WindowsSettings } from "./WindowsSettings";
+import { RemindersPanel } from "./RemindersPanel";
+import { enqueueReminder, reminderDocument } from "./reminders";
 import {
   desktopAvailable,
   saveCapture,
@@ -389,6 +392,7 @@ function Home({
   onLogout: () => Promise<void>;
 }) {
   const w = useSyncExternalStore(repo.subscribe, repo.snapshot);
+  const pendingCount = w.queue.length + (w.reminders?.queue.length ?? 0);
   const [view, setView] = useState<View>("today"),
     [selected, setSelected] = useState<string | null>(null),
     [query, setQuery] = useState(""),
@@ -397,6 +401,7 @@ function Home({
     [capturePriority, setCapturePriority] = useState<Priority>("normal"),
     [editor, setEditor] = useState<Editor | null>(null),
     [settings, setSettings] = useState(false),
+    [remindersOpen, setRemindersOpen] = useState(false),
     [logout, setLogout] = useState(false),
     [relogin, setRelogin] = useState(false),
     [restore, setRestore] = useState<Backup | null>(null);
@@ -468,10 +473,10 @@ function Home({
     };
   }, [repo]);
   useEffect(() => {
-    if (!w.queue.length) return;
+    if (!pendingCount) return;
     const timer = setTimeout(() => void synchronize(), 700);
     return () => clearTimeout(timer);
-  }, [w.queue]);
+  }, [w.queue, w.reminders?.queue]);
   useEffect(() => {
     if (!toast || undoing) return;
     const timer = setTimeout(() => setToast(null), toast.undo ? 12000 : 5000);
@@ -509,8 +514,8 @@ function Home({
         ? "Sincronizando…"
         : Object.keys(w.conflicts).length
           ? "Alterações para comparar"
-          : w.queue.length
-            ? `${w.queue.length} alteração(ões) aguardando envio`
+          : pendingCount
+            ? `${pendingCount} alteração(ões) aguardando envio`
             : syncError
               ? "Verifique a sincronização"
               : "Tudo sincronizado",
@@ -732,20 +737,36 @@ function Home({
     if (!restore) return;
     try {
       await repo.mutate((d) => {
-        for (const s of Object.values(restore.workspace.subjects))
+        const restoredIds = new Map<string, string>();
+        for (const s of Object.values(restore.workspace.subjects)) {
+          const id = crypto.randomUUID();
+          restoredIds.set(s.id, id);
           enqueue(
             d,
             session.user.id,
-            crypto.randomUUID(),
+            id,
             documentOf(s),
             `Restaurado da cópia de ${new Date(restore.exportedAt).toLocaleDateString("pt-BR")}.`,
           );
+        }
+        for (const r of Object.values(
+          restore.workspace.reminders?.rows ?? {},
+        )) {
+          if (r.deleted) continue;
+          enqueueReminder(d, session.user.id, crypto.randomUUID(), {
+            ...reminderDocument(r),
+            enabled: false,
+            subject_id: r.subject_id
+              ? (restoredIds.get(r.subject_id) ?? null)
+              : null,
+          });
+        }
       });
       setRestore(null);
       setSettings(false);
       setView("all");
       notify(
-        "Assuntos restaurados como novas cópias. Os registros existentes foram preservados.",
+        "Cópias restauradas. Os lembretes copiados ficam pausados até você retomá-los.",
       );
     } catch (e) {
       notify(errorText(e));
@@ -880,12 +901,20 @@ function Home({
                 ? "Sincronizando…"
                 : !online
                   ? "Sem conexão"
-                  : w.queue.length
-                    ? `${w.queue.length} pendente${w.queue.length > 1 ? "s" : ""}`
+                  : pendingCount
+                    ? `${pendingCount} pendente${pendingCount > 1 ? "s" : ""}`
                     : syncState === "error"
                       ? "Conexão pendente"
                       : "Tudo sincronizado"}
             </span>
+          </button>
+          <button
+            className="icon-button"
+            aria-label="Lembretes"
+            title="Lembretes"
+            onClick={() => setRemindersOpen(true)}
+          >
+            <Bell size={20} />
           </button>
           <button
             className="icon-button"
@@ -1421,6 +1450,15 @@ function Home({
           save={save}
         />
       )}
+      {remindersOpen && (
+        <Modal title="Lembretes" wide close={() => setRemindersOpen(false)}>
+          <RemindersPanel
+            repo={repo}
+            userId={session.user.id}
+            synchronize={synchronize}
+          />
+        </Modal>
+      )}
       {settings && (
         <Modal title="Seu espaço" close={() => setSettings(false)}>
           <div className="account-box">
@@ -1438,7 +1476,7 @@ function Home({
           </p>
           <WindowsSettings />
           <div className="settings-section">
-            <h3>Cópia dos seus assuntos</h3>
+            <h3>Cópia dos seus assuntos e lembretes</h3>
             <p>
               Exporte uma cópia independente com os dados deste dispositivo,
               inclusive alterações ainda não sincronizadas.
@@ -1450,7 +1488,7 @@ function Home({
               </Button>
               <Button onClick={() => void loadBackup()}>
                 <Upload size={17} />
-                Restaurar assuntos
+                Restaurar cópia
               </Button>
             </div>
           </div>
@@ -1489,7 +1527,7 @@ function Home({
               <LogOut size={17} />
               Sair da conta
             </Button>
-            <small className="version">Zenit Day · versão 0.1.8</small>
+            <small className="version">Zenit Day · versão 0.1.9</small>
           </div>
         </Modal>
       )}
@@ -1499,9 +1537,9 @@ function Home({
             Os dados locais serão preservados para quando você entrar novamente
             com esta conta.
           </p>
-          {w.queue.length > 0 && (
+          {pendingCount > 0 && (
             <p className="warning">
-              Há {w.queue.length} alteração(ões) aguardando sincronização neste
+              Há {pendingCount} alteração(ões) aguardando sincronização neste
               dispositivo.
             </p>
           )}
@@ -1534,7 +1572,7 @@ function Home({
       )}
       {restore && (
         <Modal
-          title="Restaurar como novos assuntos?"
+          title="Restaurar como novas cópias?"
           close={() => setRestore(null)}
         >
           <p>
@@ -1546,7 +1584,8 @@ function Home({
             datas e próximo passo. Os assuntos existentes permanecem como estão.
           </p>
           <p className="muted">
-            O histórico anterior continua no arquivo exportado. As novas cópias
+            Os lembretes também serão copiados, inicialmente pausados. O
+            histórico anterior continua no arquivo exportado. As novas cópias
             começam com um registro de restauração.
           </p>
           <div className="modal-actions">
