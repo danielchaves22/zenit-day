@@ -1,19 +1,19 @@
 # Zenit Day — primeiro uso
 
-Esta primeira versão usa o projeto Supabase configurado no manual. Os instaladores recebem a URL e a chave publicável durante a compilação. Você só informa o e-mail e a senha da sua conta do aplicativo na tela de login.
+O aplicativo usa o projeto Supabase configurado no manual. Os instaladores recebem a URL e a chave publicável durante a compilação. Você só informa o e-mail e a senha da sua conta do aplicativo na tela de login.
 
 ## Windows
 
-1. Execute o instalador `Zenit-Day_0.1.0_windows-x64-setup.exe`.
+1. Execute o instalador Windows x64 da versão que será instalada.
 2. Abra **Zenit Day** no menu Iniciar.
-3. Entre com a conta que você criou em **Authentication > Users** no Supabase.
+3. Entre com sua conta do Day. Se ainda não tiver acesso, solicite a criação ao responsável pela instalação; a preparação administrativa está no [manual Supabase](SUPABASE_PASSO_A_PASSO.md).
 4. Aguarde a indicação **Tudo sincronizado**.
 
 O instalador desta versão pessoal ainda não tem assinatura digital de distribuição. O Windows pode identificar o editor como desconhecido.
 
 ## Android
 
-1. Copie `Zenit-Day_0.1.0_android-arm64-debug.apk` para o telefone.
+1. Copie APK Android ARM64 correspondente à versão distribuída para o telefone.
 2. Abra o arquivo e, se solicitado, permita que o aplicativo usado para abrir o arquivo instale esse APK.
 3. Abra **Zenit Day** e use a mesma conta do Windows.
 
@@ -32,7 +32,11 @@ Este APK é de teste, para aparelhos ARM64 com Android 8 ou superior. Ele não �
 
 ## O que cada ação faz
 
-- **Hoje:** assuntos abertos com retomada ou prazo final para hoje ou uma data anterior.
+- **Hoje:** assuntos abertos com retomada/prazo para hoje ou uma data anterior, além dos incluídos pela meta do dia. **Não hoje** vai para o fim da lista, sem mudar o prazo.
+- **Meta de hoje:** intenção de Iniciar, Avançar, Finalizar ou Acompanhar; é independente do status e das datas.
+- **Prioridade:** Baixa, Normal, Importante ou Urgente; Normal é o padrão e o campo não reordena a lista.
+- **Grupos e checklist:** organizam o assunto; marcar todos os itens do checklist não o conclui automaticamente.
+- **Lembretes:** o sino abre a gestão de regras recorrentes; [veja como autorizar o envio pelo Hub](LEMBRETES.md).
 - **Acompanhamentos:** todos os assuntos abertos, inclusive os sem data de retomada.
 - **Responsável:** a pessoa que executa a tarefa. Informar um nome não compartilha o assunto com essa pessoa.
 - **Registrar andamento:** registra uma nota e atualiza a situação. O status só muda se você escolher outro; o prazo final é preservado.
@@ -48,11 +52,11 @@ Se a sessão expirar ou for revogada, entre novamente para sincronizar. O trabal
 
 Se o mesmo assunto mudar em dois dispositivos, o Zenit Day pede que você compare as versões. A versão local anterior fica preservada em **Ajustes > Versões locais preservadas**. Selecioná-la permite criar um novo assunto com seu conteúdo.
 
-## Limites desta primeira versão
+## Limites e cuidados
 
 - A sincronização com a sua conta real precisa passar pelo teste acima, nos seus dispositivos.
 - A restauração adiciona cópias dos assuntos; não substitui integralmente o banco nem reproduz o histórico antigo como eventos novos.
-- Ainda não há recuperação de senha por e-mail, notificações agendadas, compartilhamento de assuntos ou atualização automática do aplicativo.
+- Não há compartilhamento de assuntos nem atualização automática do aplicativo. A gestão de lembretes não dispara avisos locais do sistema operacional; notificações no WhatsApp dependem do Hub, da autorização, da assinatura e dos templates configurados.
 - No navegador de desenvolvimento, os dados de teste usam IndexedDB e a sessão não persiste após recarregar. O uso diário previsto é nos aplicativos nativos.
 
 Se algo falhar, mantenha o aplicativo instalado e exporte uma cópia, se possível. Informe a ação e a mensagem exibida, sem enviar sua senha.

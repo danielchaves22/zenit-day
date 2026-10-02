@@ -4,7 +4,7 @@ O Hub consulta assuntos via Data API usando OAuth e RLS do usuário. Cada aplica
 
 ## Preparação
 
-1. Aplique `supabase/migrations/20260930171741_hub_oauth_read_only.sql` após as migrações existentes. A migração acrescenta uma verificação de capacidade e bloqueia escritas com tokens OAuth de terceiros nas tabelas de assuntos/histórico, inclusive através da função de sincronização existente. Sessões normais dos aplicativos continuam podendo gravar. Esta versão trata **todos os clientes OAuth como somente leitura**.
+1. Aplique `supabase/migrations/20260930171741_hub_oauth_read_only.sql` após as migrações existentes. A migração acrescenta uma verificação de capacidade e bloqueia escritas com tokens OAuth de terceiros nas tabelas de assuntos/histórico, inclusive através da função de sincronização existente. Sessões normais dos aplicativos continuam podendo gravar. Para assuntos e histórico, **todos os clientes OAuth permanecem somente leitura**. A autorização posterior de lembretes tem contrato separado, descrito abaixo.
 2. Habilite OAuth Server no projeto Supabase e mantenha registro dinâmico desabilitado para este piloto.
 3. Registre um cliente confidencial chamado Zenit Hub, com `client_secret_basic`, authorization code/refresh token e callback exato `https://SEU_HUB/oauth/day/callback`.
 4. Publique a aplicação web do Day em HTTPS com fallback de SPA para `/oauth/consent`. Configure a Site URL do Auth para essa origem e Authorization Path como `/oauth/consent`. Não confunda essa URL com os callbacks de outros provedores de login.
@@ -32,7 +32,9 @@ SQL é validado em PGlite com Auth simulado, incluindo leitura do proprietário,
 
 O comando `supabase db advisors --local --type security` requer o stack Supabase local ativo. A validação PGlite não substitui os advisors no ambiente em que a migração for aplicada.
 
-## Ativação em 30/09/2026
+## Registro de ativação em 30/09/2026
+
+As verificações desta seção têm a data indicada; não representam uma nova validação do ambiente a cada edição documental.
 
 A migração de proteção foi aplicada ao projeto hospedado `zenit-day` (`zwtbbitzsfapsjfjabqi`) como `20260930171741_hub_oauth_read_only`. O arquivo local foi renomeado para corresponder ao histórico remoto; o conteúdo funcional permanece o mesmo da preparação anterior (`20260929162635`). Não aplique novamente a versão antiga.
 
