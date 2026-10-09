@@ -63,7 +63,8 @@ export default function HubRemindersConsent() {
           ? "Autorização salva. Volte ao WhatsApp e envie “ativar lembretes do Day” para escolher e confirmar o envio. Autorizar aqui não assina notificações automaticamente."
           : "Acesso aos lembretes revogado. O Hub não poderá consultá-los nem alterá-los.",
       );
-      await supabase.auth.signOut();
+      // Keep the Hub's OAuth grant and other Day sessions valid.
+      await supabase.auth.signOut({ scope: "local" });
       setAccount("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Não foi possível continuar.");

@@ -4,8 +4,10 @@ test("reminder consent: login alone cannot grant access; explicit grant/revoke a
   page,
 }) => {
   const grants: { p_client_id: string; p_enabled: boolean }[] = [];
+  const logoutScopes: (string | null)[] = [];
   await page.route("https://*.supabase.co/**", async (route) => {
-    const p = new URL(route.request().url()).pathname;
+    const url = new URL(route.request().url());
+    const p = url.pathname;
     if (p === "/auth/v1/token")
       return route.fulfill({
         json: {
@@ -24,7 +26,10 @@ test("reminder consent: login alone cannot grant access; explicit grant/revoke a
       grants.push(data);
       return route.fulfill({ json: { enabled: data.p_enabled } });
     }
-    if (p === "/auth/v1/logout") return route.fulfill({ status: 204 });
+    if (p === "/auth/v1/logout") {
+      logoutScopes.push(url.searchParams.get("scope"));
+      return route.fulfill({ status: 204 });
+    }
     throw new Error("Unexpected request " + p);
   });
   await page.setViewportSize({ width: 320, height: 780 });
@@ -52,6 +57,8 @@ test("reminder consent: login alone cannot grant access; explicit grant/revoke a
     "não assina notificações automaticamente",
   );
   expect(grants).toEqual([{ p_client_id: "hub-test-client", p_enabled: true }]);
+  // Consent must not revoke the Hub's OAuth session or other Day sessions.
+  await expect.poll(() => logoutScopes).toEqual(["local"]);
   await page.reload();
   await page.getByLabel("E-mail").fill("alice@example.test");
   await page.getByLabel("Senha").fill("synthetic-password");
@@ -61,6 +68,7 @@ test("reminder consent: login alone cannot grant access; explicit grant/revoke a
     .click();
   await expect(page.getByRole("status")).toContainText("revogado");
   expect(grants[1].p_enabled).toBe(false);
+  await expect.poll(() => logoutScopes).toEqual(["local", "local"]);
   expect(await page.evaluate(() => JSON.stringify(localStorage))).not.toContain(
     "synthetic-token",
   );
