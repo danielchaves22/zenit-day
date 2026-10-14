@@ -67,9 +67,15 @@
 .reminder-form .reminder-checkbox,
 .reminder-week label {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 10px;
   min-height: 44px;
+}
+.reminder-form .reminder-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
 }
 .reminder-week {
   grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
