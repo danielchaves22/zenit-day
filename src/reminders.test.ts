@@ -78,6 +78,29 @@ function remote() {
 }
 const doc = () => ({ ...blankReminder(), title: "Lançar horas" });
 describe("reminder management", () => {
+  it("preserves confirmation options through offline documents and keeps old documents compatible", () => {
+    const old = {
+      title: "Livro",
+      subject_id: null,
+      enabled: true,
+      deleted: false,
+      schedule: doc().schedule,
+    };
+    expect(reminderDocument(old)).not.toHaveProperty("requires_confirmation");
+    const next = {
+      ...old,
+      requires_confirmation: true,
+      repeat_minutes: 7,
+      respect_quiet_hours: false,
+    };
+    expect(reminderDocument(next)).toEqual(next);
+    expect(() => validateReminder(next)).not.toThrow();
+    for (const repeat_minutes of [0, -1, 1.5, 10081])
+      expect(() => validateReminder({ ...next, repeat_minutes })).toThrow();
+    const w = emptyWorkspace();
+    enqueueReminder(w, user, id, next);
+    expect(w.reminders!.queue[0].doc).toMatchObject(next);
+  });
   it("persists offline, retries lost replies once and synchronizes pause, resume and deletion", async () => {
     const storage = disk(),
       api = remote();

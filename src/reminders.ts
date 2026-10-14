@@ -18,6 +18,9 @@ export interface ReminderDoc {
   enabled: boolean;
   deleted: boolean;
   schedule: ReminderSchedule;
+  requires_confirmation?: boolean;
+  repeat_minutes?: number;
+  respect_quiet_hours?: boolean;
 }
 export interface Reminder extends ReminderDoc {
   id: string;
@@ -52,6 +55,9 @@ export function blankReminder(): ReminderDoc {
     subject_id: null,
     enabled: true,
     deleted: false,
+    requires_confirmation: false,
+    repeat_minutes: 5,
+    respect_quiet_hours: true,
     schedule: {
       kind: "daily",
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -73,9 +79,33 @@ export function reminderDocument(r: ReminderDoc): ReminderDoc {
     enabled: r.enabled,
     deleted: r.deleted,
     schedule: r.schedule,
+    // Preserve absence on old offline documents: the server keeps its current
+    // settings when an older client edits only the title or schedule.
+    ...(r.requires_confirmation !== undefined
+      ? { requires_confirmation: r.requires_confirmation }
+      : {}),
+    ...(r.repeat_minutes !== undefined
+      ? { repeat_minutes: r.repeat_minutes }
+      : {}),
+    ...(r.respect_quiet_hours !== undefined
+      ? { respect_quiet_hours: r.respect_quiet_hours }
+      : {}),
   });
 }
 export function validateReminder(doc: ReminderDoc) {
+  if (
+    (doc.requires_confirmation !== undefined &&
+      typeof doc.requires_confirmation !== "boolean") ||
+    (doc.respect_quiet_hours !== undefined &&
+      typeof doc.respect_quiet_hours !== "boolean") ||
+    (doc.repeat_minutes !== undefined &&
+      (!Number.isInteger(doc.repeat_minutes) ||
+        doc.repeat_minutes < 1 ||
+        doc.repeat_minutes > 10080))
+  )
+    throw new Error(
+      "A repetição até concluir deve ter um número inteiro de 1 a 10080 minutos.",
+    );
   const s = doc.schedule;
   if (
     typeof doc.title !== "string" ||

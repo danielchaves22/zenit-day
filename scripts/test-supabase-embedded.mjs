@@ -88,6 +88,23 @@ try {
   ])
     for (const result of await db.exec(await read("../tests/" + file)))
       for (const row of result.rows ?? []) if (row.result) console.log(row);
+  await db.exec(
+    await read(
+      "../supabase/migrations/20261014040541_reminder_confirmation.sql",
+    ),
+  );
+  await db.exec(
+    await read(
+      "../supabase/migrations/20261014040803_reminder_confirmation_policy.sql",
+    ),
+  );
+  for (const file of [
+    "reminder-confirmation.integration.sql",
+    "hub-reminders.integration.sql",
+    "reminders.integration.sql",
+  ])
+    for (const result of await db.exec(await read("../tests/" + file)))
+      for (const row of result.rows ?? []) if (row.result) console.log(row);
 } finally {
   await db.close();
 }

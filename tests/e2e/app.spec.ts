@@ -170,9 +170,12 @@ test("reminders: offline management, mobile sync and deletion", async ({
     .click();
   await page.getByLabel("O que lembrar?").fill("Lançar horas do mês");
   await page
-    .getByRole("combobox", { name: "Repetir", exact: true })
+    .getByRole("combobox", { name: "Frequência do lembrete", exact: true })
     .selectOption("monthly");
   await page.getByLabel("Dia do mês", { exact: true }).fill("29");
+  await page.getByLabel("Requer confirmação (botão Concluído)").check();
+  await page.getByLabel("Repetir enquanto pendente, a cada quantos minutos?").fill("7");
+  await page.getByLabel("Respeitar o período de silêncio").uncheck();
   await expect(page.getByText("Quando o mês não tiver esse dia")).toBeVisible();
   net.online = false;
   await page
@@ -186,6 +189,7 @@ test("reminders: offline management, mobile sync and deletion", async ({
   net.online = true;
   await page.getByRole("button", { name: "Sincronizar agora" }).click();
   await expect.poll(() => backend.reminders.size).toBe(1);
+  expect([...backend.reminders.values()][0]).toMatchObject({requires_confirmation:true,repeat_minutes:7,respect_quiet_hours:false});
   await page.getByRole("button", { name: "Lembretes", exact: true }).click();
   await page.screenshot({
     path: "test-results/reminders-desktop.png",
@@ -200,7 +204,7 @@ test("reminders: offline management, mobile sync and deletion", async ({
   await expect(mobile.locator(".reminder-row")).toContainText("Pausado");
   await mobile.getByRole("button", { name: "Editar", exact: true }).click();
   await mobile
-    .getByRole("combobox", { name: "Repetir", exact: true })
+    .getByRole("combobox", { name: "Frequência do lembrete", exact: true })
     .selectOption("daily");
   await mobile.getByLabel("Horário 1", { exact: true }).fill("07:00");
   await mobile.getByRole("button", { name: "Adicionar horário" }).click();
@@ -211,6 +215,11 @@ test("reminders: offline management, mobile sync and deletion", async ({
     path: "test-results/reminders-mobile.png",
     fullPage: true,
   });
+  await mobile.getByLabel("Repetir enquanto pendente, a cada quantos minutos?").scrollIntoViewIfNeeded();
+  await expect(mobile.getByLabel("Requer confirmação (botão Concluído)")).toBeChecked();
+  await expect(mobile.getByLabel("Repetir enquanto pendente, a cada quantos minutos?")).toHaveValue("7");
+  await expect(mobile.getByLabel("Respeitar o período de silêncio")).not.toBeChecked();
+  await mobile.screenshot({path:"test-results/reminders-confirmation-mobile.png",fullPage:true});
   expect(
     await mobile
       .getByRole("dialog")

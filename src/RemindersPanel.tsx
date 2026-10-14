@@ -121,6 +121,14 @@ export function RemindersPanel({
                   </span>
                 </div>
                 <p>{scheduleLabel(r.schedule)}</p>
+                <p className="muted">
+                  {r.requires_confirmation
+                    ? `Requer confirmação · repetir a cada ${r.repeat_minutes ?? 5} minutos até concluir`
+                    : "Um aviso por horário"}
+                  {r.respect_quiet_hours !== false
+                    ? " · Respeita o silêncio do WhatsApp"
+                    : " · Avisa também durante o silêncio"}
+                </p>
                 <small className="muted">
                   Início:{" "}
                   {localDateTime(
@@ -267,7 +275,12 @@ function ReminderForm({
   save: (doc: ReminderDoc) => Promise<void>;
   cancel: () => void;
 }) {
-  const [doc, setDoc] = useState(() => structuredClone(initial)),
+  const [doc, setDoc] = useState(() => ({
+      requires_confirmation: false,
+      repeat_minutes: 5,
+      respect_quiet_hours: true,
+      ...structuredClone(initial),
+    })),
     [error, setError] = useState("");
   const s = doc.schedule;
   function schedule(patch: Partial<ReminderSchedule>) {
@@ -331,7 +344,7 @@ function ReminderForm({
           </select>
         </label>
         <label>
-          Repetir
+          Frequência do lembrete
           <select
             value={s.kind}
             onChange={(e) =>
@@ -479,6 +492,51 @@ function ReminderForm({
             )}
           </>
         )}
+        <fieldset className="reminder-options">
+          <legend>Avisos pelo WhatsApp</legend>
+          <label className="reminder-checkbox">
+            <input
+              type="checkbox"
+              checked={doc.requires_confirmation}
+              onChange={(e) =>
+                setDoc({ ...doc, requires_confirmation: e.target.checked })
+              }
+            />
+            Requer confirmação (botão Concluído)
+          </label>
+          {doc.requires_confirmation && (
+            <label>
+              Repetir enquanto pendente, a cada quantos minutos?
+              <input
+                type="number"
+                min={1}
+                max={10080}
+                step={1}
+                required
+                value={doc.repeat_minutes}
+                onChange={(e) =>
+                  setDoc({ ...doc, repeat_minutes: Number(e.target.value) })
+                }
+              />
+            </label>
+          )}
+          <label className="reminder-checkbox">
+            <input
+              type="checkbox"
+              checked={doc.respect_quiet_hours}
+              onChange={(e) =>
+                setDoc({ ...doc, respect_quiet_hours: e.target.checked })
+              }
+            />
+            Respeitar o período de silêncio
+          </label>
+          <p className="muted">
+            Configure seu horário global enviando “configurar silêncio” ao
+            WhatsApp. Desmarque apenas se desejar receber este lembrete também
+            durante o silêncio. Uma nova ocorrência substitui a pendência
+            anterior deste lembrete.
+          </p>
+        </fieldset>
         <div className="reminder-columns">
           <label>
             Começar em
